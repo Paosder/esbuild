@@ -1,7 +1,11 @@
 package config
 
 import (
+	"regexp"
+
+	"github.com/evanw/esbuild/internal/ast"
 	"github.com/evanw/esbuild/internal/compat"
+	"github.com/evanw/esbuild/internal/logging"
 )
 
 type LanguageTarget int8
@@ -77,6 +81,7 @@ const (
 	LoaderDataURL
 	LoaderFile
 	LoaderBinary
+	LoaderDefault
 )
 
 func (loader Loader) IsTypeScript() bool {
@@ -162,6 +167,45 @@ const (
 	ModeBundle
 )
 
+type ResolverPlugin struct {
+	Name     string
+	Filter   *regexp.Regexp
+	Callback func(ResolverArgs) ResolverResult
+}
+
+type ResolverArgs struct {
+	Path      string
+	ImportDir string
+}
+
+type ResolverResult struct {
+	Path      ast.Path
+	External  bool
+	Namespace string
+
+	Msgs        []logging.Msg
+	ThrownError error
+}
+
+type LoaderPlugin struct {
+	Name      string
+	Filter    *regexp.Regexp
+	Namespace string
+	Callback  func(LoaderArgs) LoaderResult
+}
+
+type LoaderArgs struct {
+	Path ast.Path
+}
+
+type LoaderResult struct {
+	Contents *string
+	Loader   Loader
+
+	Msgs        []logging.Msg
+	ThrownError error
+}
+
 type Options struct {
 	Mode              Mode
 	RemoveWhitespace  bool
@@ -192,6 +236,9 @@ type Options struct {
 	TsConfigOverride  string
 	ExtensionToLoader map[string]Loader
 	OutputFormat      Format
+
+	ResolverPlugins []ResolverPlugin
+	LoaderPlugins   []LoaderPlugin
 
 	// If present, metadata about the bundle is written as JSON here
 	AbsMetadataFile string
